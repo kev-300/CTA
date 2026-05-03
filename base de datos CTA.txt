@@ -1,0 +1,12 @@
+CREATE DATABASE CTA; 
+USE CTA;
+
+CREATE TABLE asistencia (
+    id        INT IDENTITY PRIMARY KEY,
+    nombre    NVARCHAR(100),
+    rol         NVARCHAR(50),
+    fecha     DATE,
+    hora      TIME
+);
+
+select * from asistencia;
