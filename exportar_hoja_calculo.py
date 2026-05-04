@@ -13,6 +13,7 @@ conexion = pyodbc.connect(
 
 query = "SELECT nombre, rol, fecha, hora FROM asistencia WHERE nombre = ?"
 df = pd.read_sql(query, conexion, params=[nombre])
+#exportar hoja de calculo
 
 if df.empty:
     print(f"No se encontraron registros para '{nombre}'")
