@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 nombre = input("Ingresa el nombre del trabajador: ")
-
+#conexion de la base de datos 
 conexion = pyodbc.connect(
     "DRIVER={SQL Server};"
     "SERVER=LAPTOP-C5CHORHI\\SQLEXPRESS;"
