@@ -17,7 +17,7 @@ for label, person_name in enumerate(sorted(os.listdir(data_path))):
     if not os.path.isdir(person_path):
         continue
 
-    people_list.append(person_name)
+    people_list.append(person_name.strip())
 
     for img_file in os.listdir(person_path):
         img_path = os.path.join(person_path, img_file)
@@ -44,5 +44,5 @@ with open(names_path, 'w') as f:
     for name in people_list:
         f.write(f"{name}\n")
 
-print(f"✅ Modelo guardado en: {model_path}")
-print(f"✅ Personas registradas: {people_list}")
+print(f" Modelo guardado en: {model_path}")
+print(f" Personas registradas: {people_list}")

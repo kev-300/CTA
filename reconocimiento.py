@@ -4,6 +4,7 @@ import numpy as np
 import pyodbc
 from datetime import datetime
 
+#conexion de python y sql-server
 conexion = pyodbc.connect(
     "DRIVER={ODBC Driver 17 for SQL Server};"
     "SERVER=LAPTOP-C5CHORHI\\SQLEXPRESS;"
@@ -14,7 +15,6 @@ conexion = pyodbc.connect(
 cursor = conexion.cursor()
 
 registros_hoy = set() 
-
 base_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(base_dir, 'modeloLBPHFace.xml')
 names_path = os.path.join(base_dir, 'personas.txt')
