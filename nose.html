@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mockup - Aplicativo Local PC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darker: '#121214',
+                        surface: '#1a1a1e',
+                        panel: '#222228',
+                        accent: '#3b82f6',
+                        accentHover: '#2563eb'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darker text-gray-200 font-sans h-screen flex flex-col select-none overflow-hidden">
+
+    <!-- Barra de Título Simulada -->
+    <div class="bg-surface border-b border-gray-800 h-9 flex items-center justify-between px-4 text-xs text-gray-400 select-none">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-desktop text-accent"></i>
+            <span class="font-semibold text-gray-300">GestorLocal v1.0.0</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="hover:text-white cursor-pointer px-2 py-0.5">Archivo</span>
+            <span class="hover:text-white cursor-pointer px-2 py-0.5">Editar</span>
+            <span class="hover:text-white cursor-pointer px-2 py-0.5">Ayuda</span>
+        </div>
+        <div class="flex items-center space-x-4 text-gray-400">
+            <button class="hover:text-white transition"><i class="fa-solid fa-window-minimize"></i></button>
+            <button class="hover:text-white transition"><i class="fa-solid fa-window-maximize"></i></button>
+            <button class="hover:text-red-400 transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Barra Lateral -->
+        <div class="w-56 bg-surface border-r border-gray-800 flex flex-col justify-between p-3">
+            <div class="space-y-1">
+                <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider px-3 mb-2">Módulos</div>
+                <button onclick="switchTab('registros')" id="nav-registros" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm bg-accent text-white font-medium transition shadow-sm">
+                    <i class="fa-solid fa-table w-5"></i>
+                    <span>Registros</span>
+                </button>
+                <button onclick="switchTab('agregar')" id="nav-agregar" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-panel hover:text-gray-200 transition">
+                    <i class="fa-solid fa-circle-plus w-5 text-emerald-400"></i>
+                    <span>Agregar Nuevo</span>
+                </button>
+                <button onclick="switchTab('exportar')" id="nav-exportar" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-panel hover:text-gray-200 transition">
+                    <i class="fa-solid fa-file-export w-5 text-amber-400"></i>
+                    <span>Exportar Datos</span>
+                </button>
+            </div>
+            <div class="bg-panel p-3 rounded-lg border border-gray-800 text-xs">
+                <div class="flex items-center space-x-2 text-emerald-400 mb-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="font-semibold">BD Local Activa</span>
+                </div>
+                <p class="text-gray-400 text-[11px]">SQLite (data.db)</p>
+            </div>
+        </div>
+
+        <!-- Área de Contenido -->
+        <div class="flex-1 flex flex-col bg-darker overflow-hidden">
+            
+            <!-- Vista 1: Registros -->
+            <div id="view-registros" class="flex-1 flex flex-col p-6 overflow-hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 class="text-xl font-bold text-white tracking-tight">Gestión de Registros</h1>
+                        <p class="text-xs text-gray-400">Visualiza, edita o elimina elementos almacenados localmente.</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-sm"></i>
+                            <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Buscar registro..." class="bg-panel border border-gray-700 text-sm rounded-lg pl-9 pr-4 py-2 text-gray-200 focus:outline-none focus:border-accent w-64">
+                        </div>
+                        <button onclick="switchTab('agregar')" class="bg-accent hover:bg-accentHover text-white text-sm px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Nuevo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-surface border border-gray-800 rounded-xl overflow-hidden flex flex-col">
+                    <div class="overflow-y-auto flex-1">
+                        <table class="w-full text-left border-collapse" id="dataTable">
+                            <thead class="bg-panel text-gray-400 text-xs uppercase sticky top-0 border-b border-gray-800 z-10">
+                                <tr>
+                                    <th class="py-3 px-4 font-semibold">ID</th>
+                                    <th class="py-3 px-4 font-semibold">Nombre / Ítem</th>
+                                    <th class="py-3 px-4 font-semibold">Categoría</th>
+                                    <th class="py-3 px-4 font-semibold">Estado</th>
+                                    <th class="py-3 px-4 font-semibold">Fecha</th>
+                                    <th class="py-3 px-4 font-semibold text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800/60 text-sm text-gray-300">
+                                <tr class="hover:bg-panel/50 transition">
+                                    <td class="py-3 px-4 text-gray-500 font-mono text-xs">#001</td>
+                                    <td class="py-3 px-4 font-medium text-white">Sensor de Flujo A1</td>
+                                    <td class="py-3 px-4"><span class="px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs rounded-full border border-blue-500/20">Hardware</span></td>
+                                    <td class="py-3 px-4"><span class="text-emerald-400 text-xs flex items-center space-x-1"><i class="fa-solid fa-circle text-[8px]"></i> <span>Activo</span></span></td>
+                                    <td class="py-3 px-4 text-xs text-gray-400">2026-10-15</td>
+                                    <td class="py-3 px-4 text-right space-x-2">
+                                        <button onclick="openEditModal('Sensor de Flujo A1', 'Hardware', 'Activo')" class="text-gray-400 hover:text-accent p-1.5 transition" title="Modificar"><i class="fa-solid fa-pen-to-square"></i></button>
+                                        <button onclick="deleteRow(this)" class="text-gray-400 hover:text-red-400 p-1.5 transition" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista 2: Agregar -->
+            <div id="view-agregar" class="hidden flex-1 p-8 max-w-2xl mx-auto w-full overflow-y-auto">
+                <div class="mb-6">
+                    <h1 class="text-xl font-bold text-white tracking-tight">Agregar Nuevo Registro</h1>
+                    <p class="text-xs text-gray-400">Introduce los datos para guardarlos en la base de datos local.</p>
+                </div>
+                <div class="bg-surface border border-gray-800 rounded-xl p-6 space-y-4 shadow-lg">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Nombre / Ítem</label>
+                        <input type="text" id="addName" placeholder="Ej. Lector Biométrico USB" class="w-full bg-panel border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Categoría</label>
+                        <select id="addCategory" class="w-full bg-panel border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                            <option value="Hardware">Hardware</option>
+                            <option value="Software">Software</option>
+                            <option value="IoT">IoT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">Estado</label>
+                        <select id="addStatus" class="w-full bg-panel border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-accent">
+                            <option value="Activo">Activo</option>
+                            <option value="En Mantenimiento">En Mantenimiento</option>
+                            <option value="Inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="pt-4 flex justify-end space-x-3 border-t border-gray-800">
+                        <button onclick="switchTab('registros')" class="px-4 py-2 bg-panel hover:bg-gray-700 text-gray-300 rounded-lg text-sm transition">Cancelar</button>
+                        <button onclick="simulateAdd()" class="px-5 py-2 bg-accent hover:bg-accentHover text-white rounded-lg text-sm font-medium transition">Guardar Registro</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista 3: Exportar -->
+            <div id="view-exportar" class="hidden flex-1 p-8 max-w-2xl mx-auto w-full overflow-y-auto">
+                <div class="mb-6">
+                    <h1 class="text-xl font-bold text-white tracking-tight">Exportar Base de Datos Local</h1>
+                    <p class="text-xs text-gray-400">Genera respaldos o reportes descargables.</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-surface border border-gray-800 rounded-xl p-5 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">
+                                <i class="fa-solid fa-file-csv"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">Formato CSV</h3>
+                                <p class="text-xs text-gray-400">Ideal para Excel o scripts de Python.</p>
+                            </div>
+                        </div>
+                        <button onclick="simulateExport('CSV')" class="bg-panel hover:bg-gray-700 text-gray-200 text-xs px-4 py-2.5 rounded-lg border border-gray-700 transition">Exportar CSV</button>
+                    </div>
+                    <div class="bg-surface border border-gray-800 rounded-xl p-5 flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl">
+                                <i class="fa-solid fa-file-code"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-semibold text-white">Formato JSON</h3>
+                                <p class="text-xs text-gray-400">Estructura limpia para respaldos técnicos.</p>
+                            </div>
+                        </div>
+                        <button onclick="simulateExport('JSON')" class="bg-panel hover:bg-gray-700 text-gray-200 text-xs px-4 py-2.5 rounded-lg border border-gray-700 transition">Exportar JSON</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-panel border border-gray-700 text-gray-200 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <div>
+            <p id="toastTitle" class="text-xs font-bold text-white">Operación Exitosa</p>
+            <p id="toastMsg" class="text-[11px] text-gray-400">Cambios guardados localmente.</p>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            ['registros', 'agregar', 'exportar'].forEach(id => {
+                document.getElementById('view-' + id).classList.add('hidden');
+                document.getElementById('nav-' + id).className = "w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-panel hover:text-gray-200 transition";
+            });
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            document.getElementById('nav-' + tabId).className = "w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm bg-accent text-white font-medium transition shadow-sm";
+        }
+
+        function showToast(title, msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastMsg').innerText = msg;
+            icon.className = isError ? "fa-solid fa-circle-exclamation text-amber-400 text-lg" : "fa-solid fa-circle-check text-emerald-400 text-lg";
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        function simulateAdd() {
+            const name = document.getElementById('addName').value.trim();
+            const category = document.getElementById('addCategory').value;
+            const status = document.getElementById('addStatus').value;
+
+            if(!name) {
+                showToast("Campo requerido", "Ingresa un nombre para el ítem.", true);
+                return;
+            }
+
+            const tbody = document.querySelector('#dataTable tbody');
+            const rowCount = tbody.rows.length + 1;
+            
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-panel/50 transition";
+            tr.innerHTML = `
+                <td class="py-3 px-4 text-gray-500 font-mono text-xs">#00${rowCount}</td>
+                <td class="py-3 px-4 font-medium text-white">${name}</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 bg-blue-500/15 text-blue-400 text-xs rounded-full border border-blue-500/20">${category}</span></td>
+                <td class="py-3 px-4"><span class="text-emerald-400 text-xs flex items-center space-x-1"><i class="fa-solid fa-circle text-[8px]"></i> <span>${status}</span></span></td>
+                <td class="py-3 px-4 text-xs text-gray-400">2026-10-16</td>
+                <td class="py-3 px-4 text-right space-x-2">
+                    <button onclick="deleteRow(this)" class="text-gray-400 hover:text-red-400 p-1.5 transition" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            document.getElementById('addName').value = '';
+            switchTab('registros');
+            showToast("Agregado", "Elemento guardado localmente.");
+        }
+
+        function deleteRow(btn) {
+            btn.closest('tr').remove();
+            showToast("Eliminado", "Elemento removido de la tabla.");
+        }
+
+        function simulateExport(format) {
+            showToast("Exportación Exitosa", `Archivo generado en formato ${format}.`);
+        }
+
+        function filterTable() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('#dataTable tbody tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(input) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

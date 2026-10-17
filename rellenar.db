@@ -1,0 +1,6 @@
+INSERT OR IGNORE INTO asistencia (persona_id, fecha, estado)
+SELECT p.id, :fecha, 'AUSENTE'
+FROM persona p
+WHERE p.activo = 1
+  AND NOT EXISTS (SELECT 1 FROM asistencia a
+                  WHERE a.persona_id = p.id AND a.fecha = :fecha);
