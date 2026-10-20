@@ -1,6 +1,6 @@
+import os
 import sys
 import sqlite3
-import os
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -8,8 +8,10 @@ from PySide6.QtWidgets import (
     QHeaderView, QStackedWidget, QButtonGroup, QMessageBox, QAbstractItemView,
     QFrame,
 )
+from rostro import Camara, guardar_muestras   # ROSTRO
 
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registros.db")
+MUESTRAS = 8   # ROSTRO: fotos del rostro que se guardan por persona
 
 QSS = """
 * { font-family: 'Segoe UI'; font-size: 13px; color: #e5e7eb; }
@@ -35,7 +37,7 @@ QComboBox QAbstractItemView { background: #1a1a22; selection-background-color: #
 #primary { background: #3b82f6; color: white; border: none; border-radius: 8px;
            padding: 9px 18px; font-weight: bold; }
 #primary:hover { background: #2563eb; }
-#small { background: #23232d; border: none; border-radius: 6px; padding: 5px 10px; }
+#small { background: #23232d; border: none; border-radius: 6px; padding: 7px 12px; }
 #small:hover { background: #2f2f3b; }
 QTableWidget { background: #17171d; border: 1px solid #23232d; border-radius: 10px;
                gridline-color: transparent; outline: 0; }
@@ -43,7 +45,7 @@ QTableWidget::item { padding: 6px; border-bottom: 1px solid #1f1f28; }
 QTableWidget::item:selected { background: #1f2a44; color: white; }
 QHeaderView::section { background: #1c1c24; color: #9ca3af; border: none;
                        padding: 12px 8px; font-weight: bold; text-align: left; }
-QFormLayout QLabel, #fieldLabel { color: #9ca3af; }
+#fieldLabel { color: #9ca3af; }
 """
 
 
@@ -52,14 +54,14 @@ def conectar():
     con.execute("PRAGMA foreign_keys = ON")
     return con
 
+
 class Ventana(QMainWindow):
     def __init__(self):
         super().__init__()
         self.con = conectar()
         self.setWindowTitle("GestorLocal v1.0.0")
-        self.resize(1200, 640)
+        self.resize(1200, 700)
 
-        # Menú superior
         for nombre in ("Archivo", "Editar", "Ayuda"):
             self.menuBar().addMenu(nombre)
 
@@ -111,16 +113,18 @@ class Ventana(QMainWindow):
         ok = QLabel("● BD Local Activa")
         ok.setObjectName("dbOk")
         ev.addWidget(ok)
-        ev.addWidget(QLabel(f"SQLite ({DB})"))
+        ev.addWidget(QLabel(f"SQLite ({os.path.basename(DB)})"))
         v.addWidget(estado)
         return side
 
     def stack_set(self, i):
         self.stack.setCurrentIndex(i)
+        if i != 1:
+            self.cancelar_captura()           # ROSTRO: apaga la cámara al salir
         if i == 0:
             self.cargar_registros()
         elif i == 1:
-         self.cargar_roles()
+            self.cargar_roles()
 
     def ir_a(self, i):
         self.grupo.button(i).setChecked(True)
@@ -178,12 +182,12 @@ class Ventana(QMainWindow):
         q = f"%{self.buscar.text().strip()}%"
         filas = self.con.execute(
             """SELECT p.id, p.nombre, p.identificacion, r.nombre, p.activo
-            FROM persona p JOIN rol r ON r.id = p.rol_id
-            WHERE p.nombre LIKE ? OR p.identificacion LIKE ? OR r.nombre LIKE ?
-             ORDER BY p.id DESC""", (q, q, q)).fetchall()
+               FROM persona p JOIN rol r ON r.id = p.rol_id
+               WHERE p.nombre LIKE ? OR p.identificacion LIKE ? OR r.nombre LIKE ?
+               ORDER BY p.id DESC""", (q, q, q)).fetchall()
         self.tabla.setRowCount(len(filas))
         for r, (pid, nombre, ident, rol, activo) in enumerate(filas):
-            for c, val in enumerate((pid, nombre, ident, rol.capitalize(),
+            for c, val in enumerate((pid, nombre, ident, rol,
                                      "Activo" if activo else "Inactivo")):
                 self.tabla.setItem(r, c, QTableWidgetItem(str(val)))
             btn = QPushButton("Desactivar" if activo else "Activar")
@@ -205,6 +209,9 @@ class Ventana(QMainWindow):
         v.setContentsMargins(24, 24, 24, 24)
         v.addLayout(self._encabezado("Agregar Nuevo", "Registra un nuevo usuario."))
         v.addSpacing(16)
+
+        fila = QHBoxLayout()
+        fila.setAlignment(Qt.AlignTop)
 
         caja = QWidget()
         caja.setMaximumWidth(420)
@@ -232,8 +239,27 @@ class Ventana(QMainWindow):
         guardar.setCursor(Qt.PointingHandCursor)
         guardar.clicked.connect(self.guardar)
         f.addWidget(guardar)
+        f.addStretch()
+        fila.addWidget(caja)
+        fila.addSpacing(32)
 
-        v.addWidget(caja)
+        # ROSTRO: panel de cámara en la misma ventana
+        self.muestras, self.contador = [], 0
+        panel = QVBoxLayout()
+        self.cam = Camara(self.al_detectar_cara)
+        self.btn_rostro = QPushButton("Capturar rostro")
+        self.btn_rostro.setObjectName("small")
+        self.btn_rostro.setCursor(Qt.PointingHandCursor)
+        self.btn_rostro.clicked.connect(self.alternar_captura)
+        self.lbl_rostro = QLabel("Rostro: sin capturar (opcional)")
+        self.lbl_rostro.setObjectName("subtitle")
+        panel.addWidget(self.cam)
+        panel.addWidget(self.btn_rostro)
+        panel.addWidget(self.lbl_rostro)
+        fila.addLayout(panel)
+        fila.addStretch()
+
+        v.addLayout(fila)
         v.addStretch()
         return p
 
@@ -242,29 +268,72 @@ class Ventana(QMainWindow):
         for rid, nombre in self.con.execute("SELECT id, nombre FROM rol ORDER BY nombre"):
             self.in_rol.addItem(nombre, rid)
 
+    # ---------- ROSTRO: captura ----------
+    def alternar_captura(self):
+        if self.cam.activa():
+            self.cancelar_captura()
+            return
+        self.muestras, self.contador = [], 0
+        if not self.cam.iniciar():
+            QMessageBox.warning(self, "Cámara", "No se pudo abrir la cámara.")
+            return
+        self.btn_rostro.setText("Cancelar captura")
+        self.lbl_rostro.setText(f"Mira a la cámara y mueve un poco la cabeza... 0/{MUESTRAS}")
+
+    def cancelar_captura(self):
+        self.cam.detener()
+        self.btn_rostro.setText("Capturar rostro")
+        if len(self.muestras) < MUESTRAS:
+            self.muestras = []
+            self.lbl_rostro.setText("Rostro: sin capturar (opcional)")
+
+    def al_detectar_cara(self, cara):
+        self.contador += 1
+        if self.contador % 10:            # una muestra cada ~10 frames con rostro
+            return
+        self.muestras.append(cara)
+        self.lbl_rostro.setText(f"Capturando... {len(self.muestras)}/{MUESTRAS}")
+        if len(self.muestras) >= MUESTRAS:
+            self.cam.detener()
+            self.btn_rostro.setText("Repetir captura")
+            self.lbl_rostro.setText("✓ Rostro capturado")
+
     def guardar(self):
         nombre = self.in_nombre.text().strip()
         ident = self.in_ident.text().strip()
         rol_id = self.in_rol.currentData()
         if not nombre or not ident or rol_id is None:
-            QMessageBox.warning(self, "Campos vacíos", "Nombre e identificación son obligatorios.")
+            QMessageBox.warning(self, "Campos vacíos", "Nombre, identificación y rol son obligatorios.")
+            return
+        if self.cam.activa():
+            QMessageBox.information(self, "Captura en curso", "Termina o cancela la captura del rostro.")
             return
         try:
-            self.con.execute(
-            "INSERT INTO persona (nombre, identificacion, rol_id) VALUES (?,?,?)",
-            (nombre, ident, rol_id))
+            cur = self.con.execute(
+                "INSERT INTO persona (nombre, identificacion, rol_id) VALUES (?,?,?)",
+                (nombre, ident, rol_id))
+            if self.muestras:                                     # ROSTRO
+                guardar_muestras(self.con, cur.lastrowid, self.muestras)
             self.con.commit()
         except sqlite3.IntegrityError:
+            self.con.rollback()
             QMessageBox.warning(self, "Duplicado", "Ya existe una persona con esa identificación.")
             return
         self.in_nombre.clear()
         self.in_ident.clear()
         self.in_rol.setCurrentIndex(0)
+        self.muestras = []
+        self.btn_rostro.setText("Capturar rostro")
+        self.lbl_rostro.setText("Rostro: sin capturar (opcional)")
         self.ir_a(0)
 
     # ---------- Página: Exportar (vacía por ahora) ----------
     def _pagina_exportar(self):
         return QWidget()
+
+    def closeEvent(self, e):
+        self.cam.detener()
+        super().closeEvent(e)
 
 
 if __name__ == "__main__":
