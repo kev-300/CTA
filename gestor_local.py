@@ -8,61 +8,64 @@ from PySide6.QtWidgets import (
     QHeaderView, QStackedWidget, QButtonGroup, QMessageBox, QAbstractItemView,
     QFrame,
 )
-from rostro import Camara, guardar_muestras   # ROSTRO
+from rostro import Camara, guardar_muestras   # Importar la camara del dispositivo para rostro
 
-DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registros.db")
+DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registros.db") # Conexion con la base de datos (registros.db)
 MUESTRAS = 8   # ROSTRO: fotos del rostro que se guardan por persona
 
 QSS = """
-* { font-family: 'Segoe UI'; font-size: 13px; color: #e5e7eb; }
-QMainWindow, #content { background: #0f0f14; }
-QMenuBar { background: #0f0f14; color: #9ca3af; }
-QMenuBar::item:selected { background: #1f1f28; }
-QMenu { background: #1a1a22; border: 1px solid #2a2a35; }
-QMenu::item:selected { background: #3b82f6; }
-#sidebar { background: #131318; border-right: 1px solid #23232d; }
-#sectionLabel { color: #6b7280; font-size: 11px; font-weight: bold; }
+* { font-family: 'Segoe UI'; font-size: 13px; color: #000; }
+QMainWindow, #content { background: #fff; }
+QMenuBar { background: #fff; color: #000; }
+QMenuBar::item:selected { background: #e5e7eb; }
+QMenu { background: #fff; border: 1px solid #d1d5db; }
+QMenu::item:selected { background: #d1d5db; color: #000; }
+#sidebar { background: #fff; border-right: 1px solid #d1d5db; }
+#sectionLabel { color: #000; font-size: 11px; font-weight: bold; }
 #nav { background: transparent; border: none; text-align: left;
-       padding: 10px 12px; border-radius: 8px; color: #9ca3af; }
-#nav:hover { background: #1f1f28; }
-#nav:checked { background: #3b82f6; color: white; }
-#dbStatus { background: #1a1a22; border-radius: 8px; }
-#dbOk { color: #34d399; font-weight: bold; }
-#title { font-size: 20px; font-weight: bold; color: white; }
-#subtitle { color: #9ca3af; font-size: 12px; }
-QLineEdit, QComboBox { background: #1a1a22; border: 1px solid #2a2a35;
-                       border-radius: 8px; padding: 9px 12px; }
-QLineEdit:focus, QComboBox:focus { border: 1px solid #3b82f6; }
-QComboBox QAbstractItemView { background: #1a1a22; selection-background-color: #3b82f6; }
-#primary { background: #3b82f6; color: white; border: none; border-radius: 8px;
-           padding: 9px 18px; font-weight: bold; }
-#primary:hover { background: #2563eb; }
-#small { background: #23232d; border: none; border-radius: 6px; padding: 7px 12px; }
-#small:hover { background: #2f2f3b; }
-QTableWidget { background: #17171d; border: 1px solid #23232d; border-radius: 10px;
+       padding: 10px 12px; border-radius: 8px; color: #000; }
+#nav:hover { background: #f3f4f6; }
+#nav:checked { background: #d1d5db; color: #000; font-weight: bold; }
+#dbStatus { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; }
+#dbOk { color: #000; font-weight: bold; }
+#title { font-size: 20px; font-weight: bold; color: #000; }
+#subtitle { color: #000; font-size: 12px; }
+QLineEdit, QComboBox { background: #fff; border: 1px solid #9ca3af;
+                       border-radius: 8px; padding: 9px 12px; color: #000; }
+QLineEdit:focus, QComboBox:focus { border: 2px solid #4b5563; }
+QComboBox QAbstractItemView { background: #fff; color: #000;
+                              selection-background-color: #d1d5db; selection-color: #000; }
+#primary { background: #d1d5db; color: #000; border: 1px solid #9ca3af;
+           border-radius: 8px; padding: 9px 18px; font-weight: bold; }
+#primary:hover { background: #9ca3af; }
+#small { background: #e5e7eb; color: #000; border: 1px solid #d1d5db;
+         border-radius: 6px; padding: 7px 12px; }
+#small:hover { background: #d1d5db; }
+QTableWidget { background: #fff; border: 1px solid #d1d5db; border-radius: 10px;
                gridline-color: transparent; outline: 0; }
-QTableWidget::item { padding: 6px; border-bottom: 1px solid #1f1f28; }
-QTableWidget::item:selected { background: #1f2a44; color: white; }
-QHeaderView::section { background: #1c1c24; color: #9ca3af; border: none;
+QTableWidget::item { padding: 6px; border-bottom: 1px solid #e5e7eb; color: #000; }
+QTableWidget::item:selected { background: #e5e7eb; color: #000; }
+QHeaderView::section { background: #fff; color: #000; border: none;
+                       border-bottom: 1px solid #9ca3af;
                        padding: 12px 8px; font-weight: bold; text-align: left; }
-#fieldLabel { color: #9ca3af; }
-"""
+#fieldLabel { color: #000; }
+""" # Estilos y visuales del aplicativo
 
 
-def conectar():
+def conectar(): #coneccion con la base de datos
     con = sqlite3.connect(DB)
     con.execute("PRAGMA foreign_keys = ON")
     return con
 
 
-class Ventana(QMainWindow):
+class Ventana(QMainWindow): #clase de la ventana pricipal
     def __init__(self):
         super().__init__()
         self.con = conectar()
-        self.setWindowTitle("GestorLocal v1.0.0")
+        self.setWindowTitle("GestorLocal v1.0.0") #nombre de la ventana
         self.resize(1200, 700)
 
-        for nombre in ("Archivo", "Editar", "Ayuda"):
+        for nombre in ("Archivo", "Editar", "Ayuda"):#barra de menus con archivo, editar y ayuda
             self.menuBar().addMenu(nombre)
 
         root = QWidget()
@@ -125,6 +128,7 @@ class Ventana(QMainWindow):
             self.cargar_registros()
         elif i == 1:
             self.cargar_roles()
+            self.modo_nuevo()                 # EDITAR
 
     def ir_a(self, i):
         self.grupo.button(i).setChecked(True)
@@ -190,11 +194,21 @@ class Ventana(QMainWindow):
             for c, val in enumerate((pid, nombre, ident, rol,
                                      "Activo" if activo else "Inactivo")):
                 self.tabla.setItem(r, c, QTableWidgetItem(str(val)))
+            cont = QWidget()                                   # EDITAR
+            h = QHBoxLayout(cont)
+            h.setContentsMargins(4, 0, 4, 0)
+            h.setSpacing(6)
+            b_edit = QPushButton("Editar")
+            b_edit.setObjectName("small")
+            b_edit.setCursor(Qt.PointingHandCursor)
+            b_edit.clicked.connect(lambda _=False, i=pid: self.abrir_edicion(i))
             btn = QPushButton("Desactivar" if activo else "Activar")
             btn.setObjectName("small")
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(lambda _=False, i=pid: self.cambiar_estado(i))
-            self.tabla.setCellWidget(r, 5, btn)
+            h.addWidget(b_edit)
+            h.addWidget(btn)
+            self.tabla.setCellWidget(r, 5, cont)
             self.tabla.setRowHeight(r, 44)
 
     def cambiar_estado(self, pid):
@@ -207,7 +221,11 @@ class Ventana(QMainWindow):
         p = QWidget()
         v = QVBoxLayout(p)
         v.setContentsMargins(24, 24, 24, 24)
-        v.addLayout(self._encabezado("Agregar Nuevo", "Registra un nuevo usuario."))
+        self.editando, self.n_rostros = None, 0               # EDITAR
+        enc = self._encabezado("Agregar Nuevo", "Registra un nuevo usuario.")
+        self.tit_agregar = enc.itemAt(0).widget()
+        self.sub_agregar = enc.itemAt(1).widget()
+        v.addLayout(enc)
         v.addSpacing(16)
 
         fila = QHBoxLayout()
@@ -234,11 +252,11 @@ class Ventana(QMainWindow):
             f.addWidget(w)
             f.addSpacing(8)
 
-        guardar = QPushButton("Guardar")
-        guardar.setObjectName("primary")
-        guardar.setCursor(Qt.PointingHandCursor)
-        guardar.clicked.connect(self.guardar)
-        f.addWidget(guardar)
+        self.btn_guardar = QPushButton("Guardar")
+        self.btn_guardar.setObjectName("primary")
+        self.btn_guardar.setCursor(Qt.PointingHandCursor)
+        self.btn_guardar.clicked.connect(self.guardar)
+        f.addWidget(self.btn_guardar)
         f.addStretch()
         fila.addWidget(caja)
         fila.addSpacing(32)
@@ -268,6 +286,42 @@ class Ventana(QMainWindow):
         for rid, nombre in self.con.execute("SELECT id, nombre FROM rol ORDER BY nombre"):
             self.in_rol.addItem(nombre, rid)
 
+    # ---------- EDITAR ----------
+    def texto_rostro(self):
+        if self.editando:
+            if self.n_rostros:
+                return f"Rostro actual: {self.n_rostros} muestras. Captura uno nuevo para reemplazarlo."
+            return "Sin rostro registrado."
+        return "Rostro: sin capturar (opcional)"
+
+    def modo_nuevo(self):
+        self.editando, self.n_rostros, self.muestras = None, 0, []
+        self.in_nombre.clear()
+        self.in_ident.clear()
+        self.in_rol.setCurrentIndex(0)
+        self.tit_agregar.setText("Agregar Nuevo")
+        self.sub_agregar.setText("Registra un nuevo usuario.")
+        self.btn_guardar.setText("Guardar")
+        self.btn_rostro.setText("Capturar rostro")
+        self.lbl_rostro.setText(self.texto_rostro())
+
+    def abrir_edicion(self, pid):
+        nombre, ident, rol_id = self.con.execute(
+            "SELECT nombre, identificacion, rol_id FROM persona WHERE id = ?", (pid,)).fetchone()
+        n = self.con.execute(
+            "SELECT COUNT(*) FROM biometrico WHERE persona_id = ? AND tipo = 'rostro'",
+            (pid,)).fetchone()[0]
+        self.ir_a(1)                         # entra en modo nuevo...
+        self.editando, self.n_rostros = pid, n   # ...y lo convierte en edición
+        self.in_nombre.setText(nombre)
+        self.in_ident.setText(ident)
+        self.in_rol.setCurrentIndex(max(0, self.in_rol.findData(rol_id)))
+        self.tit_agregar.setText("Editar usuario")
+        self.sub_agregar.setText("Corrige los datos o vuelve a capturar el rostro.")
+        self.btn_guardar.setText("Guardar cambios")
+        self.btn_rostro.setText("Capturar rostro nuevo")
+        self.lbl_rostro.setText(self.texto_rostro())
+
     # ---------- ROSTRO: captura ----------
     def alternar_captura(self):
         if self.cam.activa():
@@ -285,7 +339,7 @@ class Ventana(QMainWindow):
         self.btn_rostro.setText("Capturar rostro")
         if len(self.muestras) < MUESTRAS:
             self.muestras = []
-            self.lbl_rostro.setText("Rostro: sin capturar (opcional)")
+            self.lbl_rostro.setText(self.texto_rostro())
 
     def al_detectar_cara(self, cara):
         self.contador += 1
@@ -309,22 +363,27 @@ class Ventana(QMainWindow):
             QMessageBox.information(self, "Captura en curso", "Termina o cancela la captura del rostro.")
             return
         try:
-            cur = self.con.execute(
-                "INSERT INTO persona (nombre, identificacion, rol_id) VALUES (?,?,?)",
-                (nombre, ident, rol_id))
-            if self.muestras:                                     # ROSTRO
-                guardar_muestras(self.con, cur.lastrowid, self.muestras)
+            if self.editando:                                     # EDITAR
+                pid = self.editando
+                self.con.execute(
+                    "UPDATE persona SET nombre = ?, identificacion = ?, rol_id = ? WHERE id = ?",
+                    (nombre, ident, rol_id, pid))
+                if self.muestras:        # rostro nuevo: reemplaza el anterior
+                    self.con.execute(
+                        "DELETE FROM biometrico WHERE persona_id = ? AND tipo = 'rostro'", (pid,))
+                    guardar_muestras(self.con, pid, self.muestras)
+            else:
+                cur = self.con.execute(
+                    "INSERT INTO persona (nombre, identificacion, rol_id) VALUES (?,?,?)",
+                    (nombre, ident, rol_id))
+                if self.muestras:                                 # ROSTRO
+                    guardar_muestras(self.con, cur.lastrowid, self.muestras)
             self.con.commit()
         except sqlite3.IntegrityError:
             self.con.rollback()
             QMessageBox.warning(self, "Duplicado", "Ya existe una persona con esa identificación.")
             return
-        self.in_nombre.clear()
-        self.in_ident.clear()
-        self.in_rol.setCurrentIndex(0)
-        self.muestras = []
-        self.btn_rostro.setText("Capturar rostro")
-        self.lbl_rostro.setText("Rostro: sin capturar (opcional)")
+        self.modo_nuevo()
         self.ir_a(0)
 
     # ---------- Página: Exportar (vacía por ahora) ----------
