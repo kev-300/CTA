@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QFrame,
 )
 from rostro import Camara, guardar_muestras   # Importar la camara del dispositivo para rostro
+from asistencia_panel import PanelAsistencia   # ASISTENCIA
 
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registros.db") # Conexion con la base de datos (registros.db)
 MUESTRAS = 8   # ROSTRO: fotos del rostro que se guardan por persona
@@ -81,6 +82,8 @@ class Ventana(QMainWindow): #clase de la ventana pricipal
         self.stack.addWidget(self._pagina_registros())
         self.stack.addWidget(self._pagina_agregar())
         self.stack.addWidget(self._pagina_exportar())
+        self.panel_asist = PanelAsistencia(self.con)      # ASISTENCIA
+        self.stack.addWidget(self.panel_asist)
         lay.addWidget(self.stack, 1)
 
         self.cargar_registros()
@@ -98,7 +101,7 @@ class Ventana(QMainWindow): #clase de la ventana pricipal
         v.addWidget(lbl)
 
         self.grupo = QButtonGroup(self)
-        for i, texto in enumerate(("Registros", "Agregar Nuevo", "Exportar Datos")):
+        for i, texto in enumerate(("Registros", "Agregar Nuevo", "Exportar Datos", "Registrar Asistencia")):
             b = QPushButton(texto)
             b.setObjectName("nav")
             b.setCheckable(True)
@@ -124,11 +127,15 @@ class Ventana(QMainWindow): #clase de la ventana pricipal
         self.stack.setCurrentIndex(i)
         if i != 1:
             self.cancelar_captura()           # ROSTRO: apaga la cámara al salir
+        if i != 3:
+            self.panel_asist.parar()          # ASISTENCIA
         if i == 0:
             self.cargar_registros()
         elif i == 1:
             self.cargar_roles()
             self.modo_nuevo()                 # EDITAR
+        elif i == 3:
+            self.panel_asist.al_mostrar()     # ASISTENCIA
 
     def ir_a(self, i):
         self.grupo.button(i).setChecked(True)
@@ -336,6 +343,7 @@ class Ventana(QMainWindow): #clase de la ventana pricipal
 
     def cancelar_captura(self):
         self.cam.detener()
+        self.panel_asist.parar()   # ASISTENCIA
         self.btn_rostro.setText("Capturar rostro")
         if len(self.muestras) < MUESTRAS:
             self.muestras = []
