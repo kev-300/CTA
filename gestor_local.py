@@ -10,7 +10,7 @@ from panel_registros import PanelRegistros
 from panel_agregar import PanelAgregar
 from panel_exportar import PanelExportar
 from asistencia_panel import PanelAsistencia
-from datos_dia import PanelDatosDia
+from datos_dia import PanelListaDia
 
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registros.db")  # Conexión con la base de datos (registros.db)
 
@@ -84,7 +84,7 @@ class Ventana(QMainWindow):  # ventana principal: solo navegación
         self.agregar = PanelAgregar(self.con)
         self.exportar = PanelExportar(self.con)
         self.asistencia = PanelAsistencia(self.con)
-        self.datos_dia = PanelDatosDia(self.con)
+        self.datos_dia = PanelListaDia(self.con)
         self.stack = QStackedWidget()
         self.stack.setObjectName("content")
         for panel in (self.registros, self.agregar, self.exportar, self.asistencia, self.datos_dia):
