@@ -1,4 +1,4 @@
-"""Panel 'Agregar Nuevo': alta y edición de personas, con captura de rostro."""
+"""Panel 'Agregar Nuevo': alta y edición de personas, con captura de rostro y huella."""
 import sqlite3
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QComboBox, QMessageBox,
 )
 from rostro import Camara, guardar_muestras
+from huella import RegistroHuella, tiene_huella
 from panel_base import PanelBase
 
 MUESTRAS = 8   # fotos del rostro que se guardan por persona
@@ -19,6 +20,7 @@ class PanelAgregar(PanelBase):
         self.con = con
         self.editando, self.n_rostros = None, 0
         self.muestras, self.contador = [], 0
+        self.huella = RegistroHuella(con, self)   # la lógica vive en huella.py
 
         v = QVBoxLayout(self)
         v.setContentsMargins(24, 24, 24, 24)
@@ -73,6 +75,25 @@ class PanelAgregar(PanelBase):
         panel.addWidget(self.cam)
         panel.addWidget(self.btn_rostro)
         panel.addWidget(self.lbl_rostro)
+
+        # Huella (solo visible al editar una persona ya guardada)
+        panel.addSpacing(12)
+        self.btn_huella = QPushButton("Agregar huella")
+        self.btn_huella.setObjectName("small")
+        self.btn_huella.setCursor(Qt.PointingHandCursor)
+        self.btn_huella.clicked.connect(self.alternar_huella)
+        self.lbl_huella = QLabel("")
+        self.lbl_huella.setObjectName("subtitle")
+        self.lbl_huella.setWordWrap(True)
+        panel.addWidget(self.btn_huella)
+        panel.addWidget(self.lbl_huella)
+        self.btn_huella.hide()
+        self.lbl_huella.hide()
+        self.huella.mensaje.connect(self.lbl_huella.setText)
+        self.huella.exito.connect(self.huella_exito)
+        self.huella.fallo.connect(self.huella_fallo)
+        self.huella.cancelado.connect(self.refrescar_huella)
+
         fila.addLayout(panel)
         fila.addStretch()
 
@@ -86,6 +107,7 @@ class PanelAgregar(PanelBase):
 
     def parar(self):
         self.cancelar_captura()
+        self.huella.detener()
 
     def editar(self, pid):
         """Abre el panel en modo edición (gestor_local ya lo mostró)."""
@@ -103,6 +125,9 @@ class PanelAgregar(PanelBase):
         self.btn_guardar.setText("Guardar cambios")
         self.btn_rostro.setText("Capturar rostro nuevo")
         self.lbl_rostro.setText(self.texto_rostro())
+        self.btn_huella.show()
+        self.lbl_huella.show()
+        self.refrescar_huella()
 
     # ---------- Formulario ----------
     def cargar_roles(self):
@@ -127,6 +152,8 @@ class PanelAgregar(PanelBase):
         self.btn_guardar.setText("Guardar")
         self.btn_rostro.setText("Capturar rostro")
         self.lbl_rostro.setText(self.texto_rostro())
+        self.btn_huella.hide()
+        self.lbl_huella.hide()
 
     def guardar(self):
         nombre = self.in_nombre.text().strip()
@@ -137,6 +164,9 @@ class PanelAgregar(PanelBase):
             return
         if self.cam.activa():
             QMessageBox.information(self, "Captura en curso", "Termina o cancela la captura del rostro.")
+            return
+        if self.huella.activo():
+            QMessageBox.information(self, "Captura en curso", "Termina o cancela el registro de la huella.")
             return
         try:
             if self.editando:
@@ -191,3 +221,35 @@ class PanelAgregar(PanelBase):
             self.cam.detener()
             self.btn_rostro.setText("Repetir captura")
             self.lbl_rostro.setText("✓ Rostro capturado")
+
+    # ---------- Huella (la lógica vive en huella.py) ----------
+    def refrescar_huella(self):
+        tiene = self.editando is not None and tiene_huella(self.con, self.editando)
+        self.btn_huella.setText("Reemplazar huella" if tiene else "Agregar huella")
+        self.btn_huella.setEnabled(True)
+        self.lbl_huella.setText("Huella: registrada." if tiene else "Huella: sin registrar.")
+
+    def alternar_huella(self):
+        if self.huella.activo():                          # cancelar
+            self.huella.cancelar()
+            self.btn_huella.setEnabled(False)
+            self.lbl_huella.setText("Cancelando...")
+            return
+        if not self.editando:
+            return
+        if self.cam.activa():
+            QMessageBox.information(self, "Cámara activa", "Termina la captura del rostro primero.")
+            return
+        self.btn_huella.setText("Cancelar huella")
+        self.lbl_huella.setText("Conectando con el lector...")
+        self.huella.iniciar(self.editando)
+
+    def huella_exito(self, slot):
+        self.refrescar_huella()
+        self.lbl_huella.setText(f"✓ Huella registrada de forma exitosa (ID {slot}).")
+        QMessageBox.information(self, "Huella", "Huella registrada de forma exitosa.")
+
+    def huella_fallo(self, motivo):
+        self.refrescar_huella()
+        self.lbl_huella.setText(f"✗ No se pudo registrar la huella: {motivo}")
+        QMessageBox.warning(self, "Huella", f"No se pudo registrar la huella.\n\n{motivo}")

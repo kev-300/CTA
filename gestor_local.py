@@ -12,6 +12,9 @@ from panel_exportar import PanelExportar
 from asistencia_panel import PanelAsistencia
 from datos_dia import PanelListaDia
 
+import time
+T0 = time.perf_counter()
+
 DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "registros.db")  # Conexión con la base de datos (registros.db)
 
 QSS = """
@@ -162,4 +165,5 @@ if __name__ == "__main__":
     app.setStyleSheet(QSS)
     w = Ventana()
     w.show()
+    print(f"Arranque: {(time.perf_counter() - T0)*1000:.0f} ms")
     sys.exit(app.exec())

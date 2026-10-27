@@ -1,8 +1,9 @@
-"""Panel 'Registrar Asistencia' para gestor_local.py (id manual o rostro)."""
+"""Panel 'Registrar Asistencia' para gestor_local.py (id manual, rostro o huella)."""
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from rostro import Camara, cargar_reconocedor, UMBRAL
 from registrar import registrar_asistencia, ACIERTOS, TIEMPO_MAX
+from huella import LectorAsistencia
 
 
 class PanelAsistencia(QWidget):
@@ -15,7 +16,7 @@ class PanelAsistencia(QWidget):
         v.setContentsMargins(24, 24, 24, 24)
         titulo = QLabel("Registrar Asistencia")
         titulo.setObjectName("title")
-        sub = QLabel("Registra la asistencia con identificación o rostro.")
+        sub = QLabel("Registra la asistencia con identificación, rostro o huella.")
         sub.setObjectName("subtitle")
         v.addWidget(titulo)
         v.addWidget(sub)
@@ -29,6 +30,10 @@ class PanelAsistencia(QWidget):
         self.btn_rostro.setObjectName("small")
         self.btn_rostro.setFixedWidth(420)
         self.btn_rostro.clicked.connect(self.alternar_rostro)
+        self.btn_huella = QPushButton("Reconocer por huella")
+        self.btn_huella.setObjectName("small")
+        self.btn_huella.setFixedWidth(420)
+        self.btn_huella.clicked.connect(self.alternar_huella)
         self.cam = Camara(self.al_reconocer)
         self.cam.hide()
         self.msg = QLabel("")
@@ -36,13 +41,23 @@ class PanelAsistencia(QWidget):
         self.msg.setFixedWidth(420)
         self.msg.setMinimumHeight(90)
         self.msg.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        for w in (self.entrada, self.btn_rostro, self.cam, self.msg):
+        for w in (self.entrada, self.btn_rostro, self.btn_huella, self.cam, self.msg):
             v.addWidget(w, 0, Qt.AlignLeft)
         v.addStretch()
 
         self.espera = QTimer(self)
         self.espera.setSingleShot(True)
         self.espera.timeout.connect(self.tiempo_agotado)
+
+        # La lógica de huella vive en huella.py: aquí solo se conectan las señales
+        self.lector = LectorAsistencia(con, self)
+        self.lector.mensaje.connect(lambda t: self.mostrar(t, "#4b5563"))
+        self.lector.persona.connect(lambda pid, nom, rol: self.registrar_persona(pid, nom, rol, "huella"))
+        self.lector.desconocida.connect(
+            lambda slot: self.mostrar(f"Huella reconocida (ID {slot}) pero sin un usuario activo asociado.", "#b91c1c"))
+        self.lector.no_reconocida.connect(
+            lambda: self.mostrar("Huella no reconocida. Intenta de nuevo.", "#b91c1c"))
+        self.lector.terminado.connect(self.fin_huella)
 
     # --- API que usa gestor_local ---
     def al_mostrar(self):
@@ -53,6 +68,7 @@ class PanelAsistencia(QWidget):
         self.cam.detener()
         self.cam.hide()
         self.btn_rostro.setText("Reconocer por rostro")
+        self.parar_huella()
 
     # --- lógica interna ---
     def mostrar(self, texto, color="#000"):
@@ -82,10 +98,12 @@ class PanelAsistencia(QWidget):
         else:
             self.mostrar(f"{nombre} ({rol})\nRegistrado a las {hora} — fuera de horario", "#b45309")
 
+    # --- rostro ---
     def alternar_rostro(self):
         if self.cam.activa():
             self.parar()
             return
+        self.parar_huella()               # el rostro y la huella no corren a la vez
         self.rec = cargar_reconocedor(self.con)
         if self.rec is None:
             self.mostrar("No hay rostros registrados", "#b91c1c")
@@ -118,3 +136,27 @@ class PanelAsistencia(QWidget):
                 """SELECT p.nombre, r.nombre FROM persona p
                    JOIN rol r ON r.id = p.rol_id WHERE p.id = ?""", (pid,)).fetchone()
             self.registrar_persona(pid, *fila, metodo="rostro")
+
+    # --- huella ---
+    def alternar_huella(self):
+        if self.lector.activo():
+            self.parar_huella()
+            self.mostrar("Lector de huella detenido")
+            return
+        if self.cam.activa():             # cierra la cámara si estaba activa
+            self.espera.stop()
+            self.cam.detener()
+            self.cam.hide()
+            self.btn_rostro.setText("Reconocer por rostro")
+        self.btn_huella.setText("Detener lector de huella")
+        self.mostrar("Conectando con el lector...", "#4b5563")
+        self.lector.iniciar()
+
+    def parar_huella(self):
+        self.lector.detener()
+        self.btn_huella.setText("Reconocer por huella")
+
+    def fin_huella(self, ok, detalle):
+        self.btn_huella.setText("Reconocer por huella")
+        if not ok:
+            self.mostrar(f"Lector de huella detenido: {detalle}", "#b91c1c")
